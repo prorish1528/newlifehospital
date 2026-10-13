@@ -1,0 +1,81 @@
+<div class="page-title">
+  <h1>Patient Search &amp; Edit</h1>
+  <p class="muted">Search by name, patient code, mobile number or exact ID number. Only contact number and address can be changed.</p>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <input type="search" class="search-input" [formControl]="query" placeholder="Search patients…" aria-label="Search patients" />
+    <a class="btn btn-primary" routerLink="/staff/register">＋ Register new</a>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Patient Code</th><th>Name</th><th>Age</th><th>Gender</th><th>Contact</th><th>ID</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (p of result()?.content ?? []; track p.id) {
+          <tr>
+            <td class="mono">{{ p.patientCode }}</td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.age }}</td>
+            <td>{{ genderLabels[p.gender] }}</td>
+            <td>{{ p.contactNumber }}</td>
+            <td>{{ idLabels[p.idType] }} {{ p.maskedIdNumber }}</td>
+            <td class="right">
+              <button type="button" class="btn btn-sm btn-outline" (click)="view(p.id)">View / Edit</button>
+              <a class="btn btn-sm btn-ghost" routerLink="/staff/billing" [queryParams]="{ patientId: p.id }">Bill</a>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="muted center">{{ loading() ? 'Loading…' : 'No patients found.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (result(); as r) {
+    @if (r.totalPages > 1) {
+      <div class="pager">
+        <button type="button" class="btn btn-sm btn-ghost" [disabled]="r.page === 0" (click)="go(-1)">‹ Prev</button>
+        <span>Page {{ r.page + 1 }} of {{ r.totalPages }} · {{ r.totalElements }} patients</span>
+        <button type="button" class="btn btn-sm btn-ghost" [disabled]="r.page + 1 >= r.totalPages" (click)="go(1)">Next ›</button>
+      </div>
+    }
+  }
+</div>
+
+<app-modal [open]="!!selected()" [title]="selected()?.name ?? 'Patient'" (closed)="selected.set(null)">
+  @if (selected(); as p) {
+    <dl class="detail-grid">
+      <div><dt>Patient Code</dt><dd class="mono">{{ p.patientCode }}</dd></div>
+      <div><dt>ID</dt><dd>{{ p.idType === 'OTHER' ? p.idTypeOther : idLabels[p.idType] }} · {{ p.maskedIdNumber }}</dd></div>
+      <div><dt>Date of Birth</dt><dd>{{ p.dob | date: 'dd MMM yyyy' }} ({{ p.age }} yrs)</dd></div>
+      <div><dt>Gender</dt><dd>{{ genderLabels[p.gender] }}</dd></div>
+      <div><dt>Registered</dt><dd>{{ p.createdAt | date: 'dd MMM yyyy, h:mm a' }} by {{ p.createdBy }}</dd></div>
+      <div><dt>Last updated</dt><dd>{{ p.updatedAt | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
+    </dl>
+    <p class="note">🔒 Name, ID and date of birth are locked after registration.</p>
+
+    <form [formGroup]="editForm" (ngSubmit)="save()" novalidate>
+      @if (editError(); as e) {<div class="alert alert-error">{{ e }}</div>}
+      <div class="field">
+        <label for="e-contact">Contact Number</label>
+        <div class="input-prefix"><span>+91</span><input id="e-contact" formControlName="contactNumber" inputmode="numeric" maxlength="10" /></div>
+        <app-field-error [control]="editForm.controls.contactNumber" />
+      </div>
+      <div class="field">
+        <label for="e-address">Address</label>
+        <textarea id="e-address" rows="2" formControlName="address" maxlength="255"></textarea>
+        <app-field-error [control]="editForm.controls.address" />
+      </div>
+      <div class="form-actions">
+        <a class="btn btn-ghost" routerLink="/staff/invoices" [queryParams]="{ patientId: p.id }">Invoices</a>
+        <button type="submit" class="btn btn-primary" [disabled]="saving() || editForm.pristine">
+          {{ saving() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </div>
+    </form>
+  }
+</app-modal>

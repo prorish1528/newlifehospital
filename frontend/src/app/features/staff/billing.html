@@ -1,0 +1,140 @@
+<div class="page-title">
+  <h1>Invoice / Bill Generation</h1>
+  <p class="muted">Charges are taken from the hospital charges sheet. The invoice number is assigned when you save.</p>
+</div>
+
+@if (loading()) {
+  <p class="muted">Loading charges sheet…</p>
+} @else {
+  @if (error(); as e) {<div class="alert alert-error" role="alert">{{ e }}</div>}
+
+  <div class="billing-layout">
+    <div class="stack">
+      <section class="card">
+        <h2 class="card-title">1. Patient</h2>
+        @if (patient(); as p) {
+          <div class="selected-patient">
+            <div>
+              <strong>{{ p.name }}</strong> <span class="mono muted">{{ p.patientCode }}</span>
+              <div class="muted small">{{ p.age }} yrs · {{ genderLabels[p.gender] }} · {{ p.contactNumber }} · ID {{ p.maskedIdNumber }}</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" (click)="patient.set(null)">Change</button>
+          </div>
+        } @else {
+          <app-patient-picker (selected)="patient.set($event)" (registerRequested)="showRegister.set(true)" />
+          <p class="muted small mt-1">Patient not registered yet?
+            <button type="button" class="link-btn" (click)="showRegister.set(true)">Register a new patient</button>
+          </p>
+        }
+      </section>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="stack">
+        <section class="card">
+          <h2 class="card-title">2. OPD Evaluation Doctor</h2>
+          <div class="field">
+            <label for="doctor">Doctor <span class="muted">(optional)</span></label>
+            <select id="doctor" formControlName="doctorId">
+              <option [ngValue]="null">— No OPD evaluation —</option>
+              @for (d of doctors(); track d.id) {
+                <option [ngValue]="d.id">{{ d.name }} · {{ d.specialization }}</option>
+              }
+            </select>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="flex-between">
+            <h2 class="card-title">3. Services</h2>
+            <button type="button" class="btn btn-sm btn-outline" (click)="addItem()">＋ Add service</button>
+          </div>
+          <div class="table-wrap">
+            <table class="table items-table" formArrayName="items">
+              <thead><tr><th>Service</th><th class="w-qty">Qty</th><th class="right">Rate</th><th class="right">Amount</th><th></th></tr></thead>
+              <tbody>
+                @for (g of items.controls; track g; let i = $index) {
+                  <tr [formGroupName]="i">
+                    <td>
+                      <select formControlName="serviceId" [attr.aria-label]="'Service for line ' + (i + 1)">
+                        <option [ngValue]="null" disabled>Select a service…</option>
+                        @for (cat of categories(); track cat[0]) {
+                          <optgroup [label]="cat[0]">
+                            @for (s of cat[1]; track s.id) {
+                              <option [ngValue]="s.id" [disabled]="isUsed(s.id, i)">{{ s.serviceName }} — ₹{{ s.cost }}</option>
+                            }
+                          </optgroup>
+                        }
+                      </select>
+                      <app-field-error [control]="g.controls.serviceId" />
+                    </td>
+                    <td>
+                      <input type="number" min="1" max="999" formControlName="quantity" [attr.aria-label]="'Quantity for line ' + (i + 1)" />
+                      <app-field-error [control]="g.controls.quantity" />
+                    </td>
+                    <td class="right">{{ lines()[i]?.unit | currency: 'INR' }}</td>
+                    <td class="right">{{ lines()[i]?.amount | currency: 'INR' }}</td>
+                    <td class="right">
+                      <button type="button" class="icon-btn" (click)="removeItem(i)" [attr.aria-label]="'Remove line ' + (i + 1)">🗑</button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="muted center">No services added.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">4. Discount &amp; Payment</h2>
+          <div class="form-grid">
+            <div class="field">
+              <label for="discount">{{ rules()['discount']?.fieldLabel ?? 'Discount' }} <span class="muted">(optional)</span></label>
+              <input id="discount" formControlName="discount" inputmode="decimal" placeholder="0.00" />
+              <app-field-error [control]="form.controls.discount" />
+            </div>
+            <div class="field">
+              <span class="label">Payment Status</span>
+              <div class="radio-row" role="radiogroup">
+                <label class="radio"><input type="radio" formControlName="paymentStatus" value="FULL" /> Fully Paid</label>
+                <label class="radio"><input type="radio" formControlName="paymentStatus" value="PARTIAL" /> Partially Paid</label>
+              </div>
+            </div>
+            @if (isPartial()) {
+              <div class="field">
+                <label for="paid">{{ rules()['paidAmount']?.fieldLabel ?? 'Amount Paid' }} <span class="req">*</span></label>
+                <input id="paid" formControlName="paidAmount" inputmode="decimal" placeholder="0.00" />
+                <app-field-error [control]="form.controls.paidAmount" />
+              </div>
+            }
+          </div>
+        </section>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving()">
+            {{ saving() ? 'Generating…' : 'Generate Invoice' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <aside class="card summary-card" aria-label="Bill summary">
+      <h2 class="card-title">Bill Summary</h2>
+      <dl class="summary">
+        <div><dt>Invoice No.</dt><dd class="muted">Assigned on save</dd></div>
+        <div><dt>Billed by</dt><dd>{{ auth.user()?.fullName }} <small class="muted">({{ auth.user()?.username }})</small></dd></div>
+        <div><dt>Total</dt><dd>{{ total() | currency: 'INR' }}</dd></div>
+        <div><dt>Discount</dt><dd>− {{ discount() | currency: 'INR' }}</dd></div>
+        <div class="summary-strong"><dt>Net Payable</dt><dd>{{ net() | currency: 'INR' }}</dd></div>
+        <div><dt>Paid</dt><dd>{{ paid() | currency: 'INR' }}</dd></div>
+        <div class="summary-balance" [class.has-balance]="balance() > 0"><dt>Balance</dt><dd>{{ balance() | currency: 'INR' }}</dd></div>
+      </dl>
+      <span class="status-pill" [class.status-partial]="isPartial()">{{ isPartial() ? 'Partially Paid' : 'Fully Paid' }}</span>
+    </aside>
+  </div>
+}
+
+<app-modal [open]="showRegister()" title="Register New Patient" [wide]="true" (closed)="showRegister.set(false)">
+  @if (showRegister()) {
+    <app-patient-register-form (registered)="onRegistered($event)" (useExisting)="onRegistered($event)" />
+  }
+</app-modal>

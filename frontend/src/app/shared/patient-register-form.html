@@ -1,0 +1,102 @@
+@if (loading()) {
+  <p class="muted">Loading form rules…</p>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="form-grid">
+    @if (formError(); as e) {
+      <div class="alert alert-error span-2" role="alert">{{ e }}</div>
+    }
+
+    <div class="field span-2 suggest-anchor">
+      <label for="p-name">{{ label('name', 'Full Name') }} <span class="req">*</span></label>
+      <input id="p-name" formControlName="name" autocomplete="off" [attr.maxlength]="rule('name')?.maxLength"
+             placeholder="Start typing to check existing patients" (focus)="nameFocused.set(true)"
+             (blur)="blurName()" (keydown.escape)="nameFocused.set(false)" />
+      <app-field-error [control]="form.controls.name" />
+      @if (nameFocused() && suggestions().length) {
+        <div class="suggest-panel" role="listbox" aria-label="Existing patients">
+          <div class="suggest-title">Possible existing patients — avoid duplicates</div>
+          @for (p of suggestions(); track p.id) {
+            <button type="button" class="suggest-item" role="option" (mousedown)="$event.preventDefault()" (click)="useExisting.emit(p)">
+              <strong>{{ p.name }}</strong>
+              <span>{{ p.patientCode }} · {{ p.age }} yrs · {{ genderLabels[p.gender] }} · {{ p.contactNumber }} · ID {{ p.maskedIdNumber }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="field">
+      <label for="p-idtype">{{ label('idType', 'ID Type') }} <span class="req">*</span></label>
+      <select id="p-idtype" formControlName="idType">
+        @for (t of idTypes; track t[0]) {
+          <option [value]="t[0]">{{ t[1] }}</option>
+        }
+      </select>
+      <app-field-error [control]="form.controls.idType" />
+    </div>
+
+    @if (showOther()) {
+      <div class="field">
+        <label for="p-idother">{{ label('idTypeOther', 'Other ID Type') }} <span class="req">*</span></label>
+        <input id="p-idother" formControlName="idTypeOther" [attr.maxlength]="rule('idTypeOther')?.maxLength"
+               placeholder="e.g. PAN Card, Ration Card" />
+        <app-field-error [control]="form.controls.idTypeOther" />
+      </div>
+    }
+
+    <div class="field">
+      <label for="p-idnum">{{ idRule()?.fieldLabel ?? 'ID Number' }} <span class="req">*</span></label>
+      <input id="p-idnum" formControlName="idNumber" autocomplete="off" (input)="normalizeId($event)"
+             [attr.maxlength]="(idRule()?.maxLength ?? 20) + 4" spellcheck="false" />
+      <app-field-error [control]="form.controls.idNumber" />
+      @if (duplicate(); as d) {
+        <button type="button" class="btn btn-sm btn-outline mt-1" (click)="useExisting.emit(d)">
+          Use existing record {{ d.patientCode }}
+        </button>
+      }
+    </div>
+
+    <div class="field">
+      <label for="p-dob">{{ label('dob', 'Date of Birth') }} <span class="req">*</span></label>
+      <div class="inline">
+        <input id="p-dob" type="date" formControlName="dob" [max]="today" />
+        <span class="age-chip" [class.age-chip-empty]="!age()" aria-live="polite">
+          {{ age() ? 'Age: ' + age() : 'Age —' }}
+        </span>
+      </div>
+      <app-field-error [control]="form.controls.dob" />
+    </div>
+
+    <div class="field">
+      <span class="label">{{ label('gender', 'Gender') }} <span class="req">*</span></span>
+      <div class="radio-row" role="radiogroup">
+        @for (g of genders; track g[0]) {
+          <label class="radio"><input type="radio" formControlName="gender" [value]="g[0]" /> {{ g[1] }}</label>
+        }
+      </div>
+      <app-field-error [control]="form.controls.gender" />
+    </div>
+
+    <div class="field">
+      <label for="p-contact">{{ label('contactNumber', 'Contact Number') }} <span class="req">*</span></label>
+      <div class="input-prefix"><span>+91</span>
+        <input id="p-contact" formControlName="contactNumber" inputmode="numeric" autocomplete="off"
+               [attr.maxlength]="rule('contactNumber')?.maxLength" />
+      </div>
+      <app-field-error [control]="form.controls.contactNumber" />
+    </div>
+
+    <div class="field span-2">
+      <label for="p-address">{{ label('address', 'Address') }} <span class="muted">(optional)</span></label>
+      <textarea id="p-address" rows="2" formControlName="address" [attr.maxlength]="rule('address')?.maxLength"></textarea>
+      <app-field-error [control]="form.controls.address" />
+    </div>
+
+    <div class="span-2 form-actions">
+      <button type="reset" class="btn btn-ghost" (click)="duplicate.set(null)">Clear</button>
+      <button type="submit" class="btn btn-primary" [disabled]="submitting() || !!duplicate()">
+        {{ submitting() ? 'Registering…' : 'Register Patient' }}
+      </button>
+    </div>
+  </form>
+}

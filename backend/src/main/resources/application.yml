@@ -1,0 +1,72 @@
+# Production-oriented defaults. Every secret is read from the environment and has no fallback,
+# so the application refuses to start if one is missing. Use the "dev" profile for local work.
+spring:
+  application:
+    name: newlife-hospital
+  threads:
+    virtual:
+      enabled: true            # Java 21 virtual threads for request handling
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/newlife_hospital}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate       # schema is owned by Flyway migrations
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Kolkata
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
+  jackson:
+    time-zone: Asia/Kolkata
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true   # e.g. a patient edit carrying "name" is rejected, not ignored
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+    include-message: never
+  servlet:
+    session:
+      tracking-modes: cookie
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  zone: Asia/Kolkata
+  jwt:
+    secret: ${APP_JWT_SECRET}               # base64, at least 32 random bytes
+    expiration: ${APP_JWT_EXPIRATION:PT8H}
+    cookie-name: NLH_SESSION
+    cookie-secure: ${APP_COOKIE_SECURE:true}
+  crypto:
+    key: ${APP_CRYPTO_KEY}                   # base64, exactly 32 bytes (AES-256)
+    hmac-key: ${APP_HMAC_KEY}                # base64, at least 32 bytes (blind index for ID numbers)
+  bootstrap-admin:
+    username: ${APP_ADMIN_USERNAME:}
+    password: ${APP_ADMIN_PASSWORD:}
+  upload-dir: ${APP_UPLOAD_DIR:./uploads}
+  cors:
+    allowed-origins: ${APP_CORS_ORIGINS:}
+  login:
+    max-attempts: 5
+    lock-duration: PT15M

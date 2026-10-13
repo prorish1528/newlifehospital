@@ -1,0 +1,86 @@
+@if (error(); as e) {
+  <div class="alert alert-error">{{ e }}</div>
+}
+@if (invoice(); as inv) {
+  <div class="no-print page-title flex-between">
+    <a class="btn btn-ghost" [routerLink]="['..']">‹ Back to invoices</a>
+    <span class="btn-row">
+      @if (scope() === 'staff') {<a class="btn btn-outline" routerLink="/staff/billing">＋ New invoice</a>}
+      <button type="button" class="btn btn-primary" (click)="doPrint()">🖨 Print</button>
+    </span>
+  </div>
+
+  <article class="card invoice-sheet">
+    <header class="invoice-head">
+      <div class="invoice-brand">
+        <app-logo />
+        <div>
+          <div class="brand-name">New Life Hospital</div>
+          <div class="muted small">{{ cms()['address'] }}</div>
+          <div class="muted small">{{ cms()['contact_phone'] }}</div>
+        </div>
+      </div>
+      <div class="invoice-meta">
+        <div class="invoice-label">INVOICE</div>
+        <div class="mono">{{ inv.invoiceNumber }}</div>
+        <div class="muted small">{{ inv.createdAt | date: 'dd MMM yyyy, h:mm a' }}</div>
+      </div>
+    </header>
+
+    <section class="invoice-parties">
+      <div>
+        <h3>Patient</h3>
+        <p><strong>{{ inv.patient.name }}</strong><br />
+          <span class="mono">{{ inv.patient.patientCode }}</span><br />
+          {{ inv.patient.age }} yrs · {{ genderLabels[inv.patient.gender] }}<br />
+          +91 {{ inv.patient.contactNumber }}</p>
+      </div>
+      <div>
+        <h3>OPD Evaluation</h3>
+        <p>{{ inv.doctorName ?? 'Not applicable' }}@if (inv.doctorSpecialization) {<br /><span class="muted">{{ inv.doctorSpecialization }}</span>}</p>
+      </div>
+      <div>
+        <h3>Billed by</h3>
+        <p>{{ inv.staffName }}<br /><span class="muted">{{ inv.staffUsername }}</span></p>
+      </div>
+    </section>
+
+    <table class="table invoice-items">
+      <thead><tr><th>#</th><th>Service</th><th class="right">Rate</th><th class="right">Qty</th><th class="right">Amount</th></tr></thead>
+      <tbody>
+        @for (it of inv.items; track $index) {
+          <tr><td>{{ $index + 1 }}</td><td>{{ it.serviceName }}</td><td class="right">{{ it.unitPrice | currency: 'INR' }}</td>
+            <td class="right">{{ it.quantity }}</td><td class="right">{{ it.amount | currency: 'INR' }}</td></tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="invoice-totals">
+      <dl class="summary">
+        <div><dt>Total</dt><dd>{{ inv.totalAmount | currency: 'INR' }}</dd></div>
+        <div><dt>Discount</dt><dd>− {{ inv.discount | currency: 'INR' }}</dd></div>
+        <div class="summary-strong"><dt>Net Payable</dt><dd>{{ inv.netAmount | currency: 'INR' }}</dd></div>
+        <div><dt>Paid</dt><dd>{{ inv.paidAmount | currency: 'INR' }}</dd></div>
+        <div class="summary-balance" [class.has-balance]="inv.balanceAmount > 0"><dt>Balance</dt><dd>{{ inv.balanceAmount | currency: 'INR' }}</dd></div>
+      </dl>
+      <span class="status-pill" [class.status-partial]="inv.paymentStatus === 'PARTIAL'">
+        {{ inv.paymentStatus === 'FULL' ? 'Fully Paid' : 'Partially Paid' }}</span>
+    </div>
+    <footer class="invoice-foot muted small">This is a computer-generated invoice. Get well soon!</footer>
+  </article>
+
+  @if (scope() === 'staff' && inv.balanceAmount > 0) {
+    <section class="card no-print payment-card">
+      <h2 class="card-title">Record a payment</h2>
+      <div class="inline">
+        <input [formControl]="payment" inputmode="decimal" [placeholder]="'Up to ' + inv.balanceAmount" aria-label="Payment amount" />
+        <button type="button" class="btn btn-primary" (click)="recordPayment()" [disabled]="paying()">
+          {{ paying() ? 'Saving…' : 'Record payment' }}</button>
+        <button type="button" class="btn btn-ghost" (click)="payment.setValue('' + inv.balanceAmount)">Pay full balance</button>
+      </div>
+      <app-field-error [control]="payment" />
+    </section>
+  }
+} @else if (!error()) {
+  <p class="muted">Loading invoice…</p>
+}

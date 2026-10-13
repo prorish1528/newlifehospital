@@ -1,0 +1,20 @@
+# Backend
+backend/target/
+backend/uploads/
+*.log
+
+# Frontend (see also frontend/.gitignore)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json

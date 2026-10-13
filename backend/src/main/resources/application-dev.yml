@@ -1,0 +1,23 @@
+# LOCAL DEVELOPMENT ONLY. In-memory H2 (PostgreSQL mode) and throwaway keys.
+# These keys and demo accounts must never be used in any shared or production environment.
+spring:
+  datasource:
+    url: jdbc:h2:mem:newlife;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+app:
+  jwt:
+    secret: KPOOeHlaoicn1z+mKfwLhEm5H1VXODGyl7Y3D8erE+w=
+    cookie-secure: false        # local http://localhost
+  crypto:
+    key: AXO06WBtEwF/7o4gjUcNdjXlaYQiMRjCYT9aONGdHSE=
+    hmac-key: ikwtgTcDU+RV48ttyLcmRgHkwpR+lKVbDx7nVdWORkc=
+  bootstrap-admin:
+    username: admin
+    password: Admin@NLH2026
+  dev-seed:
+    staff-username: staff1
+    staff-password: Staff@NLH2026
+  cors:
+    allowed-origins: http://localhost:4200

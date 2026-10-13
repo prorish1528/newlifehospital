@@ -1,0 +1,95 @@
+<div class="page-title flex-between">
+  <div>
+    <h1>Staff Management</h1>
+    <p class="muted">Create and manage staff login accounts. Passwords are stored as BCrypt hashes and can only be reset, never viewed.</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openModal('create')">＋ Add staff</button>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Status</th><th>Created</th><th></th></tr></thead>
+      <tbody>
+        @for (s of staff(); track s.id) {
+          <tr>
+            <td>{{ s.fullName }}</td>
+            <td class="mono">{{ s.username }}</td>
+            <td>{{ s.email ?? '—' }}</td>
+            <td>{{ s.phoneNumber ?? '—' }}</td>
+            <td><span class="status-pill" [class.status-off]="!s.enabled">{{ s.enabled ? 'Active' : 'Disabled' }}</span></td>
+            <td>{{ s.createdAt | date: 'dd MMM yyyy' }}</td>
+            <td class="right nowrap">
+              <button type="button" class="btn btn-sm btn-outline" (click)="openModal('edit', s)">Edit</button>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="openModal('username', s)">Username</button>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="openModal('password', s)">Password</button>
+              <button type="button" class="btn btn-sm btn-danger-ghost" (click)="openModal('delete', s)">Delete</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="muted center">{{ loading() ? 'Loading…' : 'No staff accounts yet.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-modal [open]="mode() !== null" [title]="modalTitle()" (closed)="close()">
+  @if (error(); as e) {<div class="alert alert-error">{{ e }}</div>}
+
+  @switch (mode()) {
+    @case ('create') {
+      <form [formGroup]="createForm" (ngSubmit)="submit()" novalidate>
+        <div class="field"><label for="c-name">Full name *</label><input id="c-name" formControlName="fullName" />
+          <app-field-error [control]="createForm.controls.fullName" /></div>
+        <div class="field"><label for="c-user">Username *</label><input id="c-user" formControlName="username" autocomplete="off" autocapitalize="none" />
+          <app-field-error [control]="createForm.controls.username" /></div>
+        <div class="field"><label for="c-pass">Initial password *</label><input id="c-pass" type="password" formControlName="password" autocomplete="new-password" />
+          <app-field-error [control]="createForm.controls.password" /></div>
+        <div class="field"><label for="c-email">Email</label><input id="c-email" type="email" formControlName="email" />
+          <app-field-error [control]="createForm.controls.email" /></div>
+        <div class="field"><label for="c-phone">Phone</label><input id="c-phone" formControlName="phoneNumber" inputmode="numeric" maxlength="10" />
+          <app-field-error [control]="createForm.controls.phoneNumber" /></div>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" (click)="close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Create account</button></div>
+      </form>
+    }
+    @case ('edit') {
+      <form [formGroup]="editForm" (ngSubmit)="submit()" novalidate>
+        <div class="field"><label for="e-name">Full name *</label><input id="e-name" formControlName="fullName" />
+          <app-field-error [control]="editForm.controls.fullName" /></div>
+        <div class="field"><label for="e-email">Email</label><input id="e-email" type="email" formControlName="email" />
+          <app-field-error [control]="editForm.controls.email" /></div>
+        <div class="field"><label for="e-phone">Phone</label><input id="e-phone" formControlName="phoneNumber" inputmode="numeric" maxlength="10" />
+          <app-field-error [control]="editForm.controls.phoneNumber" /></div>
+        <label class="checkbox"><input type="checkbox" formControlName="enabled" /> Account active (disabling signs the user out immediately)</label>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" (click)="close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button></div>
+      </form>
+    }
+    @case ('password') {
+      <form [formGroup]="passwordForm" (ngSubmit)="submit()" novalidate>
+        <div class="field"><label for="r-pass">New password *</label><input id="r-pass" type="password" formControlName="newPassword" autocomplete="new-password" />
+          <app-field-error [control]="passwordForm.controls.newPassword" /></div>
+        <p class="note">Share the new password with the staff member through a secure channel.</p>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" (click)="close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Reset password</button></div>
+      </form>
+    }
+    @case ('username') {
+      <form [formGroup]="usernameForm" (ngSubmit)="submit()" novalidate>
+        <div class="field"><label for="r-user">New username *</label><input id="r-user" formControlName="newUsername" autocomplete="off" autocapitalize="none" />
+          <app-field-error [control]="usernameForm.controls.newUsername" /></div>
+        <p class="note">Existing invoices keep the username that was active when they were created.</p>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" (click)="close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Change username</button></div>
+      </form>
+    }
+    @case ('delete') {
+      <p>Delete the account <strong>{{ target()?.username }}</strong> ({{ target()?.fullName }})? They will no longer be able to sign in.
+        Invoices they created are kept. This cannot be undone — consider disabling the account instead.</p>
+      <div class="form-actions"><button type="button" class="btn btn-ghost" (click)="close()">Cancel</button>
+        <button type="button" class="btn btn-danger" [disabled]="busy()" (click)="submit()">Delete account</button></div>
+    }
+  }
+</app-modal>
