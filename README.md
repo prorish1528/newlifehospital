@@ -32,6 +32,14 @@ The `dev` profile uses an in-memory database (reset on restart), throwaway keys,
 credentials are in [`backend/src/main/resources/application-dev.yml`](backend/src/main/resources/application-dev.yml).
 Never use that profile outside a developer machine.
 
+### Local PostgreSQL instead of the in-memory database
+
+1. Create the app role and an empty database (you'll be prompted for the `postgres` password):
+   `psql -h localhost -p <port> -U postgres -d postgres -v app_password=<choose one> -f backend/scripts/create-local-db.sql`
+2. Copy `backend/local-db.properties.example` to `backend/local-db.properties` (git-ignored) and fill in port and password.
+3. Start the backend with both profiles: `mvn spring-boot:run -Dspring-boot.run.profiles=dev,local`.
+   Flyway creates the tables and sample data on first start; data then survives restarts.
+
 Tests: `mvn test` (backend: crypto unit tests + MockMvc end-to-end flows) and `npm test -- --watch=false` (frontend).
 
 ## Production

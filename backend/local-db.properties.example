@@ -1,0 +1,6 @@
+# Copy to backend/local-db.properties (git-ignored) and fill in. Used by the "local" Spring profile.
+LOCAL_DB_HOST=localhost
+LOCAL_DB_PORT=5432
+LOCAL_DB_NAME=newlife_hospital
+LOCAL_DB_USERNAME=newlife_app
+LOCAL_DB_PASSWORD=

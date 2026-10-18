@@ -1,12 +1,16 @@
 # Backend
 backend/target/
 backend/uploads/
+backend/local-db.properties
 *.log
 
 # Frontend (see also frontend/.gitignore)
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+
+# Local PostgreSQL data directory (never commit database files)
+/data/
 
 # Local env / secrets
 .env

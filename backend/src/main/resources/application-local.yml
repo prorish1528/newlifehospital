@@ -1,0 +1,12 @@
+# Local PostgreSQL for development. Activate together with "dev":  spring.profiles.active=dev,local
+# "dev" still supplies the throwaway keys and demo accounts; this profile only swaps H2 for PostgreSQL,
+# so data now survives restarts.
+#
+# Connection settings live in a git-ignored file, backend/local-db.properties (see local-db.properties.example).
+spring:
+  config:
+    import: optional:file:./local-db.properties,optional:file:./backend/local-db.properties
+  datasource:
+    url: jdbc:postgresql://${LOCAL_DB_HOST:localhost}:${LOCAL_DB_PORT:5432}/${LOCAL_DB_NAME:newlife_hospital}
+    username: ${LOCAL_DB_USERNAME:newlife_app}
+    password: ${LOCAL_DB_PASSWORD}

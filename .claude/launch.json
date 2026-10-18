@@ -4,7 +4,7 @@
     {
       "name": "backend",
       "runtimeExecutable": "mvn",
-      "runtimeArgs": ["-f", "backend/pom.xml", "-q", "spring-boot:run", "-Dspring-boot.run.profiles=dev", "-Dmaven.compiler.release=17", "-Djava.version=17"],
+      "runtimeArgs": ["-f", "backend/pom.xml", "-q", "spring-boot:run", "-Dspring-boot.run.profiles=dev,local", "-Dmaven.compiler.release=17", "-Djava.version=17"],
       "port": 8080
     },
     {
