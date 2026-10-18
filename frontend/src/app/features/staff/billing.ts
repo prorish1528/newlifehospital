@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -21,13 +21,13 @@ import { FieldError } from '../../shared/field-error';
 import { Modal } from '../../shared/modal';
 import { PatientPicker } from '../../shared/patient-picker';
 import { PatientRegisterForm } from '../../shared/patient-register-form';
-import { money } from '../../shared/util';
+import { localDateTimeNow, money } from '../../shared/util';
 
 type ItemGroup = FormGroup<{ serviceId: FormControl<number | null>; quantity: FormControl<number> }>;
 
 @Component({
   selector: 'app-billing',
-  imports: [ReactiveFormsModule, CurrencyPipe, FieldError, Modal, PatientPicker, PatientRegisterForm],
+  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, FieldError, Modal, PatientPicker, PatientRegisterForm],
   templateUrl: './billing.html',
 })
 export class Billing implements OnInit {
@@ -54,6 +54,11 @@ export class Billing implements OnInit {
 
   protected readonly items = new FormArray<ItemGroup>([]);
   protected readonly form = this.fb.group({
+    visitAt: this.fb.nonNullable.control<string>(localDateTimeNow(), (c) => {
+      const v = String(c.value ?? '');
+      if (!v) return { required: 'Visit date and time is required.' };
+      return v > localDateTimeNow() ? { custom: 'Visit time cannot be in the future.' } : null;
+    }),
     doctorId: this.fb.control<number | null>(null),
     items: this.items,
     discount: this.fb.nonNullable.control<string>(''),
@@ -86,6 +91,8 @@ export class Billing implements OnInit {
   );
   protected readonly balance = computed(() => money(Math.max(0, this.net() - this.paid())));
   protected readonly isPartial = computed(() => this.value().paymentStatus === 'PARTIAL');
+  protected readonly visitAt = computed(() => this.value().visitAt);
+  protected readonly maxVisit = localDateTimeNow;
 
   ngOnInit(): void {
     forkJoin({
@@ -168,6 +175,8 @@ export class Billing implements OnInit {
         discount: this.discount(),
         paymentStatus: v.paymentStatus,
         paidAmount: v.paymentStatus === 'PARTIAL' ? this.paid() : null,
+        // Send an absolute instant so the server never has to guess the browser's time zone.
+        visitAt: new Date(v.visitAt).toISOString(),
       })
       .subscribe({
         next: (inv) => {

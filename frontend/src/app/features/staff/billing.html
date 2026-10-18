@@ -30,15 +30,22 @@
 
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="stack">
         <section class="card">
-          <h2 class="card-title">2. OPD Evaluation Doctor</h2>
-          <div class="field">
-            <label for="doctor">Doctor <span class="muted">(optional)</span></label>
-            <select id="doctor" formControlName="doctorId">
-              <option [ngValue]="null">— No OPD evaluation —</option>
-              @for (d of doctors(); track d.id) {
-                <option [ngValue]="d.id">{{ d.name }} · {{ d.specialization }}</option>
-              }
-            </select>
+          <h2 class="card-title">2. Visit &amp; OPD Evaluation Doctor</h2>
+          <div class="form-grid">
+            <div class="field">
+              <label for="visit">Visit date &amp; time <span class="req">*</span></label>
+              <input id="visit" type="datetime-local" formControlName="visitAt" [max]="maxVisit()" />
+              <app-field-error [control]="form.controls.visitAt" />
+            </div>
+            <div class="field">
+              <label for="doctor">Doctor <span class="muted">(optional)</span></label>
+              <select id="doctor" formControlName="doctorId">
+                <option [ngValue]="null">— No OPD evaluation —</option>
+                @for (d of doctors(); track d.id) {
+                  <option [ngValue]="d.id">{{ d.name }} · {{ d.specialization }}</option>
+                }
+              </select>
+            </div>
           </div>
         </section>
 
@@ -121,6 +128,7 @@
       <h2 class="card-title">Bill Summary</h2>
       <dl class="summary">
         <div><dt>Invoice No.</dt><dd class="muted">Assigned on save</dd></div>
+        <div><dt>Visit</dt><dd>{{ visitAt() ? (visitAt() | date: 'dd MMM yyyy, h:mm a') : '—' }}</dd></div>
         <div><dt>Billed by</dt><dd>{{ auth.user()?.fullName }} <small class="muted">({{ auth.user()?.username }})</small></dd></div>
         <div><dt>Total</dt><dd>{{ total() | currency: 'INR' }}</dd></div>
         <div><dt>Discount</dt><dd>− {{ discount() | currency: 'INR' }}</dd></div>

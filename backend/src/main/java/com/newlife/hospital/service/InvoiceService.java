@@ -23,8 +23,13 @@ import com.newlife.hospital.web.dto.PublicDtos.PageResponse;
 import jakarta.persistence.criteria.JoinType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -79,6 +84,8 @@ public class InvoiceService {
         if (status == PaymentStatus.PARTIAL) {
             check.check("paidAmount", req.paidAmount() == null ? null : req.paidAmount().toPlainString());
         }
+
+        Instant visitAt = parseVisitTime(req.visitAt(), check);
 
         Patient patient = req.patientId() == null ? null : patients.findById(req.patientId()).orElse(null);
         if (patient == null) {
@@ -144,7 +151,7 @@ public class InvoiceService {
         LocalDate today = LocalDate.now(props.zone());
         String number = "NLH-INV-%s-%05d".formatted(today.format(NUMBER_DATE), invoices.nextInvoiceSequence());
         Invoice invoice = new Invoice(number, patient, staff.username(), authService.displayName(staff), doctor,
-                discount, today);
+                discount, today, visitAt);
         lines.forEach(invoice::addItem);
         invoice.applyTotals(total, paid);
         return Mappers.invoiceDetail(invoices.saveAndFlush(invoice), today);
@@ -213,6 +220,36 @@ public class InvoiceService {
         var pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         return PageResponse.of(invoices.findAll(spec, pageable).map(Mappers::invoiceSummary));
+    }
+
+    /**
+     * Visit time as an ISO instant with offset (e.g. {@code 2026-10-18T10:08:00Z}, as sent by the SPA), or a local
+     * {@code yyyy-MM-ddTHH:mm} taken as hospital time (IST). Blank means "now"; it may not be in the future
+     * (5 minutes of clock skew allowed) or more than a year ago.
+     */
+    private Instant parseVisitTime(String raw, DynamicValidator.FormCheck check) {
+        Instant now = Instant.now();
+        if (raw == null || raw.isBlank()) {
+            return now;
+        }
+        try {
+            String value = raw.trim();
+            Instant visit = hasOffset(value) ? OffsetDateTime.parse(value).toInstant()
+                    : LocalDateTime.parse(value).atZone(props.zone()).toInstant();
+            if (visit.isAfter(now.plus(Duration.ofMinutes(5)))) {
+                check.reject("visitAt", "Visit time cannot be in the future.");
+            } else if (visit.isBefore(now.minus(Duration.ofDays(365)))) {
+                check.reject("visitAt", "Visit time cannot be more than a year ago.");
+            }
+            return visit;
+        } catch (DateTimeParseException e) {
+            check.reject("visitAt", "Enter a valid visit date and time.");
+            return now;
+        }
+    }
+
+    private static boolean hasOffset(String value) {
+        return value.endsWith("Z") || value.matches(".*T.*[+-]\\d{2}:\\d{2}$");
     }
 
     private static BigDecimal money(BigDecimal value) {

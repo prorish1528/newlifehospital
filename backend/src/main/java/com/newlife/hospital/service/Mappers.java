@@ -74,12 +74,13 @@ public final class Mappers {
         return new InvoiceSummary(i.getId(), i.getInvoiceNumber(), i.getInvoiceDate(), i.getPatient().getPatientCode(),
                 i.getPatient().getName(), i.getDoctor() == null ? null : i.getDoctor().getName(), i.getStaffName(),
                 i.getNetAmount(), i.getPaidAmount(), i.getBalanceAmount(), i.getPaymentStatus().name(),
-                i.getCreatedAt());
+                i.getVisitAt(), i.getCreatedAt());
     }
 
     public static InvoiceDetail invoiceDetail(Invoice i, LocalDate today) {
         Doctor d = i.getDoctor();
-        return new InvoiceDetail(i.getId(), i.getInvoiceNumber(), i.getInvoiceDate(), summary(i.getPatient(), today),
+        return new InvoiceDetail(i.getId(), i.getInvoiceNumber(), i.getInvoiceDate(), i.getVisitAt(),
+                summary(i.getPatient(), today),
                 d == null ? null : d.getId(), d == null ? null : d.getName(), d == null ? null : d.getSpecialization(),
                 i.getStaffUsername(), i.getStaffName(),
                 i.getItems().stream().map(it -> new ItemView(it.getService().getId(), it.getServiceName(),

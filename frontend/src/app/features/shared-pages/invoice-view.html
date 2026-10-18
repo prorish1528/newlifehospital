@@ -23,7 +23,8 @@
       <div class="invoice-meta">
         <div class="invoice-label">INVOICE</div>
         <div class="mono">{{ inv.invoiceNumber }}</div>
-        <div class="muted small">{{ inv.createdAt | date: 'dd MMM yyyy, h:mm a' }}</div>
+        <div class="small"><strong>Visit:</strong> {{ inv.visitAt | date: 'dd MMM yyyy, h:mm a' }}</div>
+        <div class="muted small">Billed: {{ inv.createdAt | date: 'dd MMM yyyy, h:mm a' }}</div>
       </div>
     </header>
 
@@ -66,7 +67,7 @@
       <span class="status-pill" [class.status-partial]="inv.paymentStatus === 'PARTIAL'">
         {{ inv.paymentStatus === 'FULL' ? 'Fully Paid' : 'Partially Paid' }}</span>
     </div>
-    <footer class="invoice-foot muted small">This is a computer-generated invoice. Get well soon!</footer>
+    <footer class="invoice-foot muted small">This is a computer-generated invoice. Thank you!</footer>
   </article>
 
   @if (scope() === 'staff' && inv.balanceAmount > 0) {

@@ -90,6 +90,7 @@ export interface InvoiceSummary {
   id: number;
   invoiceNumber: string;
   invoiceDate: string;
+  visitAt: string;
   patientCode: string;
   patientName: string;
   doctorName?: string;
@@ -105,6 +106,7 @@ export interface InvoiceDetail {
   id: number;
   invoiceNumber: string;
   invoiceDate: string;
+  visitAt: string;
   patient: PatientSummary;
   doctorId?: number;
   doctorName?: string;

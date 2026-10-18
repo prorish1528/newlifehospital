@@ -70,6 +70,10 @@ public class Invoice {
     @Column(name = "invoice_date", nullable = false, updatable = false)
     private LocalDate invoiceDate;
 
+    /** When the patient visited; defaults to the billing time but staff may enter an earlier time. */
+    @Column(name = "visit_at", nullable = false, updatable = false)
+    private Instant visitAt;
+
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<InvoiceItem> items = new ArrayList<>();
@@ -86,7 +90,8 @@ public class Invoice {
     }
 
     public Invoice(String invoiceNumber, Patient patient, String staffUsername, String staffName, Doctor doctor,
-                   BigDecimal discount, LocalDate invoiceDate) {
+                   BigDecimal discount, LocalDate invoiceDate, Instant visitAt) {
+        this.visitAt = visitAt;
         this.invoiceNumber = invoiceNumber;
         this.patient = patient;
         this.staffUsername = staffUsername;
@@ -127,6 +132,7 @@ public class Invoice {
     public BigDecimal getBalanceAmount() { return balanceAmount; }
     public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public LocalDate getInvoiceDate() { return invoiceDate; }
+    public Instant getVisitAt() { return visitAt; }
     public List<InvoiceItem> getItems() { return items; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

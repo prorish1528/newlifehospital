@@ -25,6 +25,13 @@ export function isoToday(): string {
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 }
 
+/** Current local time in the `yyyy-MM-ddTHH:mm` form used by <input type="datetime-local">. */
+export function localDateTimeNow(): string {
+  const t = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}`;
+}
+
 export function initials(name: string): string {
   return name
     .replace(/^Dr\.?\s+/i, '')

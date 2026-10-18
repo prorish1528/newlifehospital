@@ -90,7 +90,7 @@ class HospitalFlowIntegrationTest {
     void registerPatientEncryptsIdPreventsDuplicatesAndBills() throws Exception {
         Cookie staff = login("staff1", "Staff@NLH2026", "STAFF");
         String body = """
-                {"name":"Ravi Kumar","idType":"AADHAAR","idNumber":"2345 6789 0123","dob":"1990-05-17",
+                {"name":"Ravi Kumar","idType":"AADHAAR","idNumber":"2345 6789 0123 4567","dob":"1990-05-17",
                  "gender":"MALE","contactNumber":"9876543210","address":"Sanwer Road, Indore"}""";
 
         // DB-driven validation rejects bad input with the configured messages.
@@ -99,23 +99,42 @@ class HospitalFlowIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.contactNumber").value(
                         "Contact number must be a valid 10-digit Indian mobile number."));
+        mvc.perform(post("/api/staff/patients").with(csrf()).cookie(staff).contentType(MediaType.APPLICATION_JSON)
+                        .content(body.replace("2345 6789 0123 4567", "2345 6789 0123")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.idNumber").value("Aadhaar number must be exactly 16 digits."));
+
+        String licence = """
+                {"name":"Meena Joshi","idType":"DRIVING_LICENSE","idNumber":"%s","dob":"1988-02-01",
+                 "gender":"FEMALE","contactNumber":"9876500000"}""";
+        mvc.perform(post("/api/staff/patients").with(csrf()).cookie(staff).contentType(MediaType.APPLICATION_JSON)
+                        .content(licence.formatted("XX09 2019 0012345")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.idNumber").exists());
+        mvc.perform(post("/api/staff/patients").with(csrf()).cookie(staff).contentType(MediaType.APPLICATION_JSON)
+                        .content(licence.formatted("MP09 1899 0012345")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/staff/patients").with(csrf()).cookie(staff).contentType(MediaType.APPLICATION_JSON)
+                        .content(licence.formatted("mp-09 2019 0012345")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.maskedIdNumber").value("XXXX-2345"));
 
         var created = mvc.perform(post("/api/staff/patients").with(csrf()).cookie(staff)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.maskedIdNumber").value("XXXX-0123"))
+                .andExpect(jsonPath("$.maskedIdNumber").value("XXXX-4567"))
                 .andReturn();
         long patientId = json.readTree(created.getResponse().getContentAsString()).get("id").asLong();
 
         String stored = jdbc.queryForObject("select id_number from patients where id = ?", String.class, patientId);
-        assertThat(stored).doesNotContain("234567890123");
+        assertThat(stored).doesNotContain("2345678901234567");
 
         mvc.perform(post("/api/staff/patients").with(csrf()).cookie(staff).contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict());
         mvc.perform(post("/api/staff/patients/check-id").with(csrf()).cookie(staff)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idType\":\"AADHAAR\",\"idNumber\":\"234567890123\"}"))
+                        .content("{\"idType\":\"AADHAAR\",\"idNumber\":\"2345678901234567\"}"))
                 .andExpect(jsonPath("$.exists").value(true));
         mvc.perform(get("/api/staff/patients/suggest").param("q", "ravi").cookie(staff))
                 .andExpect(jsonPath("$[0].id").value(patientId));
@@ -137,6 +156,13 @@ class HospitalFlowIntegrationTest {
                 .getResponse().getContentAsString());
         long serviceId = services.get(0).get("id").asLong();
         double cost = services.get(0).get("cost").asDouble();
+        mvc.perform(post("/api/staff/invoices").with(csrf()).cookie(staff)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"patientId":%d,"items":[{"serviceId":%d,"quantity":1}],"paymentStatus":"FULL",
+                                 "visitAt":"2099-01-01T04:30:00.000Z"}""".formatted(patientId, serviceId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.visitAt").value("Visit time cannot be in the future."));
         var invoice = mvc.perform(post("/api/staff/invoices").with(csrf()).cookie(staff)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -145,6 +171,7 @@ class HospitalFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.invoiceNumber").value(containsString("NLH-INV-")))
                 .andExpect(jsonPath("$.staffName").value("Demo Staff"))
+                .andExpect(jsonPath("$.visitAt").exists())
                 .andExpect(jsonPath("$.totalAmount").value(cost * 2))
                 .andExpect(jsonPath("$.balanceAmount").value(cost * 2 - 10 - 50))
                 .andExpect(jsonPath("$.paymentStatus").value("PARTIAL"))
